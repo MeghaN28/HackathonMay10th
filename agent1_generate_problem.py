@@ -6,6 +6,8 @@ import json
 import re
 from datetime import datetime, timedelta
 from difflib import get_close_matches
+import time
+import subprocess
 
 # Load .env file for API key
 load_dotenv()
@@ -118,6 +120,7 @@ def save_selected_problem(problem_title, problem_link, prev_difficulty, recent_t
         json.dump(data, f, indent=4)
 
 if __name__ == "__main__":
+    print("Did you solve Today's problem?")
     previous_title = input("Enter the problem you solved previously: ")
     prev_difficulty = input("Enter its difficulty (Easy/Medium/Hard): ")
     time_taken = input("How much time did you take (e.g., 30 mins): ")
@@ -177,6 +180,13 @@ if __name__ == "__main__":
 
         print("✅ Agent 1 saved problem to JSON")
         print(json.dumps(parsed, indent=4))
+
+        print("⏳ Waiting 30 seconds before sending the email...")
+        time.sleep(30)
+
+        # Run the email-sending script
+        print("📬 Triggering agent2_send_email.py...")
+        subprocess.run(["python", "agent2_send_email.py"])
 
     except Exception as e:
         print("❌ Failed to parse AI response:", str(e))
