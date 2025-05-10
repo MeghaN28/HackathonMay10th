@@ -23,6 +23,7 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 CLIENT_SECRET_FILE = 'client_secret_573959129688-g8rsclts9c0d1c7pl562k0o3l1c93sku.apps.googleusercontent.com.json'
 
+
 def authenticate_gmail():
     creds = None
     if os.path.exists('token.pickle'):
@@ -38,6 +39,7 @@ def authenticate_gmail():
             pickle.dump(creds, token)
     return creds
 
+
 def send_email_via_gmail(subject, body, to_email):
     service = build('gmail', 'v1', credentials=authenticate_gmail())
     message = MIMEMultipart()
@@ -48,6 +50,7 @@ def send_email_via_gmail(subject, body, to_email):
     raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
     service.users().messages().send(userId='me', body={'raw': raw_message}).execute()
     print("📤 Email sent successfully")
+
 
 def generate_email_content(problem_title, problem_link, prev_difficulty, day_of_week, user_behavior, is_revision=False):
     if is_revision:
@@ -105,11 +108,45 @@ Write:
 
     try:
         response = model.generate_content(prompt)
-        return subject, response.text
+        return subject, response.text.strip()
     except Exception as e:
         print("⚠️ Gemini API failed:", str(e))
-        return subject, f"Here's your problem of the day: {problem_title}\n{problem_link}"
-    send_email_via_gmail(subject=subject, body=email_body, to_email=to_email)
+        fallback = f"Here's your problem of the day: {problem_title}\n{problem_link}"
+        return subject, fallback
+
+
+def create_and_send_email_from_json():
+    try:
+        with open("selected_problem.json", "r") as f:
+            data = json.load(f)
+
+        problem_title = data["Title"]
+        problem_link = data["Leetcode Question Link"]
+        prev_difficulty = data.get("Previous Difficulty", "Medium")
+        user_behavior = data.get("User Behavior", "skipped")
+        is_revision = "revision" in data.get("Tag", "").lower()
+        day_of_week = datetime.datetime.now().strftime("%A")
+
+        to_email = os.getenv("TO_EMAIL")
+        if not to_email:
+            raise ValueError("❌ Missing TO_EMAIL in .env")
+
+        subject, email_body = generate_email_content(
+            problem_title=problem_title,
+            problem_link=problem_link,
+            prev_difficulty=prev_difficulty,
+            day_of_week=day_of_week,
+            user_behavior=user_behavior,
+            is_revision=is_revision
+        )
+
+        send_email_via_gmail(subject=subject, body=email_body, to_email=to_email)
+
+    except FileNotFoundError:
+        print("❌ selected_problem.json not found.")
+    except Exception as e:
+        print(f"❌ Error: {e}")
+
 
 if __name__ == "__main__":
     create_and_send_email_from_json()
