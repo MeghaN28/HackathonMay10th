@@ -5,6 +5,7 @@ import google.generativeai as genai
 import json
 import re
 from datetime import datetime, timedelta
+from difflib import get_close_matches
 
 # Load .env file for API key
 load_dotenv()
@@ -27,13 +28,27 @@ def append_to_history(new_entry, filename="all_attempts.json"):
     with open(filename, "w") as f:
         json.dump(data, f, indent=4)
 
-def check_revision_needed(attempts):
+def get_problem_link_by_title(title, df):
+    titles = df["Title"].tolist()
+    close = get_close_matches(title, titles, n=1, cutoff=0.6)
+    if close:
+        match = df[df["Title"] == close[0]].iloc[0]
+        return match["Leetcode Question Link"], match["Title"], True
+    return "https://leetcode.com", title, False
+
+def check_revision_needed(attempts, df):
     today = datetime.now().date()
     for attempt in attempts:
         if attempt["Completed"] == "yes":
             try:
                 date_solved = datetime.strptime(attempt["date_attempted"], "%Y-%m-%d").date()
                 if (today - date_solved).days == 7:
+                    # Ensure link exists, or try to find it
+                    link = attempt.get("Leetcode Question Link", "").strip()
+                    if not link:
+                        link, matched_title, found = get_problem_link_by_title(attempt["Title"], df)
+                        attempt["Title"] = matched_title
+                        attempt["Leetcode Question Link"] = link
                     return attempt
             except:
                 continue
@@ -41,7 +56,7 @@ def check_revision_needed(attempts):
 
 def pick_problem_with_ai(df, prev_title, prev_difficulty, recent_tags, completed, date_attempted, all_attempts):
     # Check for revision priority
-    revision_problem = check_revision_needed(all_attempts)
+    revision_problem = check_revision_needed(all_attempts, df)
     if revision_problem:
         return json.dumps({
             "Title": revision_problem["Title"],
@@ -50,7 +65,6 @@ def pick_problem_with_ai(df, prev_title, prev_difficulty, recent_tags, completed
             "Reason": "This problem is due for revision as it was solved exactly 7 days ago."
         }), True
 
-    # Prepare prompt for Gemini if no revision is needed
     problems_data = df[["Title", "Difficulty", "Question Type", "Leetcode Question Link"]].to_dict(orient="records")[:30]
 
     prompt = f"""
