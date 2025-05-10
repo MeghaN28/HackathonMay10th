@@ -1,0 +1,10 @@
+{
+    "Title": "Valid Palindrome",
+    "Leetcode Question Link": "https://leetcode.com/problems/valid-palindrome/",
+    "Previous Difficulty": "easy",
+    "Recent Tags": [
+        "two pointer"
+    ],
+    "User Behavior": "completed",
+    "Reason": "This problem focuses on string manipulation, a different aspect of data structures than the previous 'two sum' problem, while maintaining an easy difficulty level."
+}

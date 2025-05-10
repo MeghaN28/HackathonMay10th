@@ -185,8 +185,8 @@ if __name__ == "__main__":
         print("✅ Agent 1 saved problem to JSON")
         print(json.dumps(parsed, indent=4))
 
-        print("⏳ Waiting 30 seconds before sending the email...")
-        time.sleep(30)
+        print("⏳ Waiting 10 seconds before sending the email...")
+        time.sleep(10)
 
         print("📬 Triggering agent2_send_email.py...")
         subprocess.run(["python", "agent2_send_email.py"])
