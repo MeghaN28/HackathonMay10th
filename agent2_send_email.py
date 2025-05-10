@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 import json
 import google.generativeai as genai
 import os
+import datetime
 
 # Load .env file
 load_dotenv()
@@ -48,73 +49,67 @@ def send_email_via_gmail(subject, body, to_email):
     service.users().messages().send(userId='me', body={'raw': raw_message}).execute()
     print("📤 Email sent successfully")
 
-# Load problem from JSON
-def load_problem_from_json(filepath="selected_problem.json"):
-    with open(filepath, "r") as f:
-        return json.load(f)
+def generate_email_content(problem_title, problem_link, prev_difficulty, day_of_week, user_behavior, is_revision=False):
+    if is_revision:
+        prompt = f"""
+You are an AI tutor sending a short motivational revision email.
+Today is {day_of_week}.
+The student is revisiting: "{problem_title}" (link: {problem_link}).
 
-def generate_email_content(problem_title, problem_link, prev_difficulty, day_of_week, user_behavior):
-    # Define tone based on completion
-    if user_behavior == "completed":
-        tone = "boosting"
-        intro = f"Great job! You've successfully completed a {prev_difficulty} problem!"
-        encouragement = "You're on fire! Keep going and tackle this next challenge!"
+Write:
+- A friendly greeting
+- Mention it's a revision task and why it's helpful
+- Encourage them to recall the key idea
+- End with a motivational boost
+        """
+        subject = "🧠 Time to Revise a DSA Problem!"
+    elif user_behavior.lower() == "skipped":
+        prompt = f"""
+You are an AI tutor reaching out to a student who skipped their last DSA problem.
+Today is {day_of_week}.
+Here’s the new opportunity: "{problem_title}" ({prev_difficulty}) - {problem_link}
+
+Write:
+- A kind, empathetic message
+- Normalize skipping (everyone does it!)
+- Emphasize progress over perfection
+- Encourage giving this new problem a try
+- Keep it short, warm, and motivational
+        """
+        subject = "💪 It's Okay to Skip — Let's Tackle a New DSA Problem!"
+    elif user_behavior.lower() == "completed":
+        prompt = f"""
+You are an AI tutor congratulating a student for solving a previous DSA problem.
+Today is {day_of_week}.
+The next challenge is: "{problem_title}" ({prev_difficulty}) - {problem_link}
+
+Write:
+- A big congratulations
+- Acknowledge their consistency
+- Encourage them to keep the streak going
+- Add a link to the new problem
+        """
+        subject = "🎉 Great Work! Ready for the Next DSA Challenge?"
     else:
-        tone = "motivational"
-        intro = f"Hey, it's {day_of_week}, and a fresh start awaits!"
-        encouragement = "You’ve got this! Keep pushing forward!"
+        prompt = f"""
+You are an AI tutor encouraging a student to continue DSA practice.
+Today is {day_of_week}.
+The problem for today is: "{problem_title}" ({prev_difficulty}) - {problem_link}
 
-    prompt = f"""
-You are an AI tutor sending a personalized email.
-It's {day_of_week}. The student previously attempted a {prev_difficulty} problem.
-Tone: {tone}
-Problem: {problem_title}
-Link: {problem_link}
+Write:
+- A warm greeting
+- Explain how today's problem fits their journey
+- Motivate and guide them to keep practicing
+        """
+        subject = "🚀 Your Daily DSA Problem Awaits!"
 
-Write a short, personalized, and motivational email:
-- Friendly opening
-- Reason for choosing the problem
-- Encouragement to keep going
-"""
-    response = genai.GenerativeModel("gemini-1.5-flash").generate_content(prompt)
-    return response.text
-
-def create_selected_problem_json(problem_data):
-    # Create and save selected_problem.json based on the selected problem
-    with open("selected_problem.json", "w") as f:
-        json.dump(problem_data, f, indent=4)
-
-def create_and_send_email_from_json(to_email="n.megha82@gmail.com"):
-    # Use the data (replace with dynamic generation logic as needed)
-    data = {
-        "Title": "Number of Islands",
-        "Leetcode Question Link": "https://leetcode.com/problems/number-of-islands/",
-        "Previous Difficulty": "easy",
-        "Recent Tags": [
-            "graphs"
-        ],
-        "User Behavior": "completed",
-        "Reason": "This problem is a Medium-level graph problem, building upon your previous graph work."
-    }
-    
-    # Create selected_problem.json
-    create_selected_problem_json(data)
-
-    # Generate email content based on the problem data
-    email_body = generate_email_content(
-        data["Title"],
-        data["Leetcode Question Link"],
-        data["Previous Difficulty"],
-        day_of_week="Monday",  # You can dynamically set this based on the current day
-        user_behavior=data["User Behavior"]
-    )
-
-    # Send email
-    send_email_via_gmail(
-        subject="Your Next DSA Problem - Let's Go!",
-        body=email_body,
-        to_email=to_email
-    )
+    try:
+        response = model.generate_content(prompt)
+        return subject, response.text
+    except Exception as e:
+        print("⚠️ Gemini API failed:", str(e))
+        return subject, f"Here's your problem of the day: {problem_title}\n{problem_link}"
+    send_email_via_gmail(subject=subject, body=email_body, to_email=to_email)
 
 if __name__ == "__main__":
     create_and_send_email_from_json()
