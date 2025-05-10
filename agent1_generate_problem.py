@@ -14,7 +14,6 @@ load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel("gemini-1.5-flash")
 
-# Load LeetCode CSV
 def load_problems(csv_file):
     return pd.read_csv(csv_file)
 
@@ -30,13 +29,22 @@ def append_to_history(new_entry, filename="all_attempts.json"):
     with open(filename, "w") as f:
         json.dump(data, f, indent=4)
 
+from difflib import get_close_matches
+
 def get_problem_link_by_title(title, df):
-    titles = df["Title"].tolist()
+    # Normalize both input and DataFrame titles for better matching
+    title = title.lower().strip()
+    df["normalized_title"] = df["Title"].str.lower().str.strip()
+    
+    titles = df["normalized_title"].tolist()
     close = get_close_matches(title, titles, n=1, cutoff=0.6)
+    
     if close:
-        match = df[df["Title"] == close[0]].iloc[0]
-        return match["Leetcode Question Link"], match["Title"], True
+        match_row = df[df["normalized_title"] == close[0]].iloc[0]
+        return match_row["Leetcode Question Link"], match_row["Title"], True
+    
     return "https://leetcode.com", title, False
+
 
 def check_revision_needed(attempts, df):
     today = datetime.now().date()
@@ -45,7 +53,6 @@ def check_revision_needed(attempts, df):
             try:
                 date_solved = datetime.strptime(attempt["date_attempted"], "%Y-%m-%d").date()
                 if (today - date_solved).days == 7:
-                    # Ensure link exists, or try to find it
                     link = attempt.get("Leetcode Question Link", "").strip()
                     if not link:
                         link, matched_title, found = get_problem_link_by_title(attempt["Title"], df)
@@ -57,7 +64,6 @@ def check_revision_needed(attempts, df):
     return None
 
 def pick_problem_with_ai(df, prev_title, prev_difficulty, recent_tags, completed, date_attempted, all_attempts):
-    # Check for revision priority
     revision_problem = check_revision_needed(all_attempts, df)
     if revision_problem:
         return json.dumps({
@@ -66,8 +72,6 @@ def pick_problem_with_ai(df, prev_title, prev_difficulty, recent_tags, completed
             "Link": revision_problem.get("Leetcode Question Link", "https://leetcode.com"),
             "Reason": "This problem is due for revision as it was solved exactly 7 days ago."
         }), True
-
-    problems_data = df[["Title", "Difficulty", "Question Type", "Leetcode Question Link"]].to_dict(orient="records")[:30]
 
     prompt = f"""
 You are an AI tutor designed to help a student practice Data Structures and Algorithms (DSA) on LeetCode.
@@ -184,7 +188,6 @@ if __name__ == "__main__":
         print("⏳ Waiting 30 seconds before sending the email...")
         time.sleep(30)
 
-        # Run the email-sending script
         print("📬 Triggering agent2_send_email.py...")
         subprocess.run(["python", "agent2_send_email.py"])
 

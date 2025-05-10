@@ -108,11 +108,15 @@ Write:
 
     try:
         response = model.generate_content(prompt)
-        return subject, response.text.strip()
+        body = response.text.strip()
     except Exception as e:
         print("⚠️ Gemini API failed:", str(e))
-        fallback = f"Here's your problem of the day: {problem_title}\n{problem_link}"
-        return subject, fallback
+        body = f"Here's your problem of the day: {problem_title}"
+
+    # Always append the problem link
+    body += f"\n\n🔗 Problem Link: {problem_link}"
+    return subject, body
+
 
 
 def create_and_send_email_from_json():
