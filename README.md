@@ -1,5 +1,5 @@
 This project is a smart DSA (Data Structures & Algorithms) learning assistant powered by AI. It tracks your problem-solving progress and suggests new LeetCode problems based on your performance. Built for a hackathon, the system aims to help learners build consistency, revisit difficult problems, and grow their problem-solving skills through tailored recommendations.
-
+AI-powered assistant for DSA and LeetCode guidance, offering personalized scheduling, revision reminders, and performance tracking.
 🚀 Features
 ✅ Submit LeetCode problems with completion status, tags, and time taken
 
